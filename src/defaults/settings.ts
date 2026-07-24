@@ -145,6 +145,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
   discardFolded: false,
   discardFoldedDelay: 0,
   discardFoldedDelayUnit: 'sec',
+  autoDiscardTabs: false,
+  autoDiscardTabsDelay: 30,
   tabsTreeBookmarks: true,
   treeRmOutdent: 'branch',
   autoGroupOnClose: false,

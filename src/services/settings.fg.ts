@@ -129,11 +129,14 @@ export function updateSettings(settings?: SettingsState | null): void {
   const markWindowPreface = prev.markWindowPreface !== next.markWindowPreface
   const tabsUnreadMark = prev.tabsUnreadMark !== next.tabsUnreadMark
   const copyTemplates = prev.copyTemplates !== next.copyTemplates
+  const autoDiscardTabsChanged = prev.autoDiscardTabs !== next.autoDiscardTabs || prev.autoDiscardTabsDelay !== next.autoDiscardTabsDelay
 
   // Update settings of this instance
   Utils.updateObject(Settings.state, settings, Settings.state)
 
   Settings.updPrecalcSettings()
+
+  if (Info.isSidebar && autoDiscardTabsChanged) Tabs.setupAutoDiscard()
 
   if (Info.isSidebar && newTabCtxReopen) updateWebReqHandlers()
 

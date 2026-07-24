@@ -401,6 +401,21 @@ section(ref="el")
         @update:value="Settings.saveDebounced(500)"
         @update:unit="Settings.saveDebounced(150)")
     ToggleField(
+      label="settings.auto_discard_tabs"
+      dbg="autoDiscardTabs"
+      v-model:value="Settings.state.autoDiscardTabs"
+      :default="DEFAULT_SETTINGS.autoDiscardTabs"
+      @update:value="Settings.saveDebounced(150)")
+    .sub-fields
+      NumField.-last(
+        label="settings.auto_discard_tabs_delay"
+        dbg="autoDiscardTabsDelay"
+        v-model:value="Settings.state.autoDiscardTabsDelay"
+        :default="DEFAULT_SETTINGS.autoDiscardTabsDelay"
+        :or="30"
+        :inactive="!Settings.state.autoDiscardTabs"
+        @update:value="Settings.saveDebounced(500)")
+    ToggleField(
       label="settings.tabs_tree_bookmarks"
       :inactive="!Settings.state.tabsTree"
       dbg="tabsTreeBookmarks"

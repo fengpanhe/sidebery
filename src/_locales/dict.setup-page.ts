@@ -3767,6 +3767,14 @@ Available parameters:
     zh_TW: '卸載延遲',
     ja: 'アンロードするまでの遅延',
   },
+  'settings.auto_discard_tabs': {
+    en: 'Auto discard inactive tabs',
+    zh_CN: '自动休眠不活跃的标签页',
+  },
+  'settings.auto_discard_tabs_delay': {
+    en: 'Inactivity interval (minutes)',
+    zh_CN: '休眠时间间隔（分钟）',
+  },
   'settings.discard_folded_delay_sec': {
     en: n => (n === 1 ? 'second' : 'seconds'),
     de: n => (n === 1 ? 'Sekunde' : 'Sekunden'),

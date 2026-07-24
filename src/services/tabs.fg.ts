@@ -251,6 +251,8 @@ export async function load(src?: LoadSrc): Promise<void> {
   if (Settings.state.tabsBadge) Tabs.parseBadgeRegexpRules()
   if (Tabs.badgeRulesEnabled) Tabs.updateBadges()
 
+  Tabs.setupAutoDiscard()
+
   ready = true
 
   // Call deferred event handlers
@@ -2940,4 +2942,35 @@ export function renderFavicon(tab: T.Tab) {
     // Hide img
     if (imgEl) imgEl.style.display = 'none'
   }
+}
+
+let autoDiscardInterval: number | undefined
+
+export function setupAutoDiscard(): void {
+  clearInterval(autoDiscardInterval)
+
+  if (!Settings.state.autoDiscardTabs || Settings.state.autoDiscardTabsDelay <= 0) return
+
+  const delayMs = Settings.state.autoDiscardTabsDelay * 60000
+  // Check every 30 seconds
+  const intervalMs = Math.min(delayMs, 30000)
+
+  autoDiscardInterval = setInterval(() => {
+    const now = Date.now()
+    const toDiscard: ID[] = []
+
+    for (const tab of Tabs.list) {
+      if (tab.active || tab.discarded || tab.pinned || tab.audible || tab.mediaPaused) continue
+
+      const lastAct = tab.lastActivity ?? now
+      if (now - lastAct >= delayMs) {
+        toDiscard.push(tab.id)
+      }
+    }
+
+    if (toDiscard.length) {
+      Logs.info('Auto-discarding inactive tabs:', toDiscard)
+      discardTabs(toDiscard)
+    }
+  }, intervalMs)
 }

@@ -146,6 +146,8 @@ export interface SettingsState {
   discardFolded: boolean
   discardFoldedDelay: number
   discardFoldedDelayUnit: (typeof SETTINGS_OPTIONS.discardFoldedDelayUnit)[number]
+  autoDiscardTabs: boolean
+  autoDiscardTabsDelay: number
   tabsTreeBookmarks: boolean
   treeRmOutdent: (typeof SETTINGS_OPTIONS.treeRmOutdent)[number]
   autoGroupOnClose: boolean
