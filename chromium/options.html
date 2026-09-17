@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sidebery · 外观设置</title>
+  <link rel="stylesheet" href="sidebar.css"><link rel="stylesheet" href="options.css">
+  <script type="module" src="options.js"></script>
+</head>
+<body>
+  <main class="settings">
+    <header><img src="icons/48.png" width="32" height="32" alt=""><div><h1>Sidebery</h1><p class="muted">Chromium 版 · 外观设置</p></div></header>
+    <form id="settings-form">
+      <div class="field-row">
+        <label>配色<select id="theme"><option value="blue-grey">浅薄荷</option><option value="dark">深色</option></select></label>
+        <label>标签密度<select id="density"><option value="compact">紧凑</option><option value="default">标准</option><option value="comfortable">宽松</option></select></label>
+      </div>
+      <label for="custom-css">自定义侧边栏 CSS</label>
+      <p class="muted">会应用到每个已打开的侧边栏。此版本的选择器与 Firefox 版有所不同，可使用下列变量调整配色。</p>
+      <pre>:root {
+  --frame-bg: #f1fffe;
+  --frame-fg: #172326;
+  --active-bg: #f7fafb;
+  --row-height: 34px;
+}</pre>
+      <textarea id="custom-css" rows="14" spellcheck="false" aria-label="自定义侧边栏 CSS" placeholder="在这里粘贴 CSS…" maxlength="100000"></textarea>
+      <div class="actions"><button class="primary" type="submit">保存设置</button><button id="reset" type="button">恢复默认</button><span id="status" role="status"></span></div>
+    </form>
+    <p class="muted">设置和快照仅保存在本机。Firefox 容器、代理规则、同步和隐藏顶部标签栏未移植到此版本。</p>
+    <p class="muted">快捷键可在浏览器的扩展快捷键页面修改。默认 Alt + Shift + S 打开侧边栏。</p>
+    <p class="muted">基于 Sidebery 项目 · MIT License · Chromium 实验版</p>
+  </main>
+</body>
+</html>

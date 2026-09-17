@@ -94,6 +94,7 @@ async function compile(srcPath, outputPath, srcContent) {
       if (!srcContent) srcContent = await fs.promises.readFile(srcPath, 'utf-8')
       stylus(srcContent)
         .set('paths', [path.dirname(srcPath)])
+        .set('include css', true)
         .render(async (err, css) => {
           if (!IS_DEV) {
             const { code } = await esbuild.transform(css, { minify: true, loader: 'css' })

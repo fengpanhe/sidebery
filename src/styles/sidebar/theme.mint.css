@@ -1,0 +1,53 @@
+/* Mint light sidebar. Also usable in Settings > Styles editor > Sidebar.
+ * Select the Light color scheme to apply the complete palette.
+ * Keep row heights and margins unchanged: the virtual list measures them.
+ */
+#root.Sidebar[data-frame-color-scheme="light"] {
+  --frame-bg: #f0fffd;
+  --frame-fg: #607e7d;
+  --frame-el-bg: transparent;
+  --frame-el-fg: #607e7d;
+  --frame-el-shadow: none;
+  --frame-el-overlay-hover-bg: #dcefed;
+  --frame-el-overlay-clicked-bg: #c5e5e2;
+  --frame-el-overlay-selected-bg: #afdedd80;
+  --frame-el-overlay-selected-border: #398b87;
+  --frame-scrollbar-color: #607e7d60;
+  --tabs-normal-bg: transparent;
+  --tabs-normal-fg: #607e7d;
+  --tabs-border-radius: 8px;
+  --tabs-discarded-title-opacity: 0.85;
+  --tabs-discarded-favicon-opacity: 0.65;
+  --ntb-border-radius: 8px;
+}
+
+#root.Sidebar[data-toolbar-color-scheme="light"] {
+  --toolbar-bg: #f0fffd;
+  --toolbar-fg: #315b59;
+  --toolbar-el-overlay-hover-bg: #dcefed;
+  --toolbar-el-overlay-clicked-bg: #c5e5e2;
+  --toolbar-el-overlay-active-bg: #e0f3f1;
+  --toolbar-el-overlay-active-border: #d8eae7;
+  --toolbar-el-overlay-selected-bg: #afdedd80;
+  --toolbar-el-overlay-selected-border: #398b87;
+  --toolbar-scrollbar-color: #607e7d60;
+  --accent: #398b87;
+  --border: #dceeea;
+  --nav-btn-border-radius: 8px;
+  --nav-btn-active-shadow: inset 0 0 0 1px #d8eae7;
+}
+
+#root.Sidebar[data-act-el-color-scheme="light"] {
+  --active-el-bg: #afdedd;
+  --active-el-fg: #123c3a;
+  --active-el-shadow: none;
+  --active-el-overlay-hover-bg: #123c3a0c;
+  --active-el-overlay-clicked-bg: #123c3a18;
+}
+
+#root.Sidebar[data-popup-color-scheme="light"] {
+  --popup-bg: #f0fffd;
+  --popup-fg: #315b59;
+  --popup-shadow: 0 0 0 1px #d8eae7, 0 6px 20px #123c3a18;
+  --popup-scrollbar-color: #607e7d60;
+}
