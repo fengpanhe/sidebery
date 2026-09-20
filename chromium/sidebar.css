@@ -2,14 +2,16 @@
   color-scheme: light;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
-  --frame-bg: #f1fffe;
-  --frame-fg: #172326;
-  --muted: #61767b;
-  --hover-bg: #dff7f4;
-  --active-bg: #f7fafb;
-  --active-fg: #101b1e;
-  --line: #c4e4e0;
-  --accent: #286de9;
+  --frame-bg: #effffd;
+  --frame-fg: #6c8789;
+  --muted: #91a7a8;
+  --surface-bg: #faffff;
+  --hover-bg: #d9f2f0;
+  --active-bg: #a5dcda;
+  --active-fg: #173d3e;
+  --line: #dceae9;
+  --accent: #3d8581;
+  --toolbar-fg: #315d5c;
   --row-height: 32px;
   --tree-indent: 26px;
   --radius: 9px;
@@ -19,11 +21,13 @@
   --frame-bg: #202b30;
   --frame-fg: #dce9ed;
   --muted: #9aaeb6;
+  --surface-bg: #293940;
   --hover-bg: #ffffff0f;
   --active-bg: #3b505a;
   --active-fg: #ffffff;
   --line: #9aaeb633;
   --accent: #89b9ff;
+  --toolbar-fg: #dce9ed;
 }
 :root[data-density='compact'] {
   --row-height: 26px;
@@ -82,6 +86,35 @@ button:disabled {
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
+}
+#fold-other-trees {
+  width: 34px;
+  height: 34px;
+  color: var(--toolbar-fg);
+}
+.fold-all-icon {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.fold-all-icon::before,
+.fold-all-icon::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  background: var(--frame-bg);
+}
+.fold-all-icon::before {
+  top: 1px;
+  right: 1px;
+}
+.fold-all-icon::after {
+  left: 1px;
+  bottom: 1px;
 }
 #tabs {
   flex: 0 0 auto;
@@ -190,8 +223,26 @@ button:disabled {
   padding: 3px;
 }
 .desc-count {
-  font-size: 10px;
-  color: var(--muted);
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  z-index: 2;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border: 1px solid var(--frame-bg);
+  border-radius: 8px;
+  background: #c3e3e0;
+  color: #486f70;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+.tab-icon:hover .desc-count,
+.tab-icon:focus-within .desc-count {
+  opacity: 0;
 }
 .Tab[data-drop='before']::before,
 .Tab[data-drop='after']::after {
@@ -333,7 +384,7 @@ footer {
   z-index: 10;
   width: min(260px, calc(100vw - 8px));
   padding: 5px;
-  background: var(--active-bg);
+  background: var(--surface-bg);
   box-shadow: 0 8px 24px #20373e30;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -388,7 +439,7 @@ footer {
 dialog {
   max-width: min(420px, calc(100% - 20px));
   max-height: 90vh;
-  background: var(--active-bg);
+  background: var(--surface-bg);
   color: var(--frame-fg);
   border: 1px solid var(--line);
   border-radius: 12px;

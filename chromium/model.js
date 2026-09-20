@@ -101,6 +101,59 @@ export function planMove(tabs, metadata, tabId, targetId, placement) {
   }
 }
 
+export function planMoveMany(tabs, metadata, tabIds, targetId) {
+  if (!Array.isArray(tabIds) || tabIds.length < 2 || tabIds.length > 1000)
+    throw new Error('Choose 2–1000 tabs')
+  const uniqueIds = [...new Set(tabIds)]
+  if (uniqueIds.length < 2) throw new Error('Choose at least two different tabs')
+  const selected = new Set(uniqueIds)
+  const target = tabs.find(tab => tab.id === targetId)
+  const sources = uniqueIds.map(id => tabs.find(tab => tab.id === id))
+  if (!target || sources.some(tab => !tab)) throw new Error('The tab no longer exists')
+  if (selected.has(targetId)) throw new Error('Drop the selected tabs onto another tab')
+  if (target.pinned || sources.some(tab => tab.pinned))
+    throw new Error('Pinned tabs cannot be nested')
+  if (sources.some(tab => tab.windowId !== target.windowId))
+    throw new Error('Move tabs within the same window')
+
+  const tree = normalizeTree(tabs, metadata)
+  const ordered = tabs
+    .filter(tab => tab.windowId === target.windowId)
+    .sort((a, b) => a.index - b.index)
+  const roots = ordered.filter(tab => {
+    if (!selected.has(tab.id)) return false
+    let parent = tree.parents[tab.id]
+    while (parent !== undefined) {
+      if (selected.has(parent)) return false
+      parent = tree.parents[parent]
+    }
+    return true
+  })
+  const moving = new Set()
+  for (const root of roots) {
+    for (const id of descendantIds(ordered, tree.parents, root.id)) moving.add(id)
+  }
+  if (moving.has(targetId)) throw new Error('A tab cannot be moved into its own branch')
+
+  const movingTabs = ordered.filter(tab => moving.has(tab.id))
+  const remaining = ordered.filter(tab => !moving.has(tab.id))
+  const targetBranch = descendantIds(remaining, tree.parents, targetId)
+  let insertion = remaining.findIndex(tab => tab.id === targetId)
+  while (insertion < remaining.length && targetBranch.has(remaining[insertion].id)) insertion++
+  for (const id of uniqueIds) tree.parents[id] = targetId
+  delete tree.folded[targetId]
+  remaining.splice(insertion, 0, ...movingTabs)
+  return {
+    windowId: target.windowId,
+    movingIds: movingTabs.map(tab => tab.id),
+    rootIds: roots.map(tab => tab.id),
+    order: remaining.map(tab => tab.id),
+    groupId: target.groupId,
+    parents: tree.parents,
+    folded: tree.folded,
+  }
+}
+
 export function removeFromTree(metadata, tabId) {
   const parents = { ...metadata.parents }
   const folded = { ...metadata.folded }
@@ -125,6 +178,36 @@ export function removeBranchFromTree(metadata, tabIds) {
     if (!removed.has(Number(id)) && value === true) folded[id] = true
   }
   return { parents, folded }
+}
+
+export function foldOtherTrees(tabs, metadata = {}, windowId) {
+  const tree = normalizeTree(tabs, metadata)
+  const windowTabs = windowId === undefined ? tabs : tabs.filter(tab => tab.windowId === windowId)
+  const active = windowTabs.find(tab => tab.active)
+  let activeRoot = active?.id
+  const seen = new Set()
+  while (activeRoot !== undefined && tree.parents[activeRoot] !== undefined) {
+    if (seen.has(activeRoot)) break
+    seen.add(activeRoot)
+    activeRoot = tree.parents[activeRoot]
+  }
+
+  const rootsWithChildren = new Set()
+  for (const tab of windowTabs) {
+    const parent = tree.parents[tab.id]
+    if (parent === undefined) continue
+    let root = parent
+    const ancestors = new Set()
+    while (tree.parents[root] !== undefined && !ancestors.has(root)) {
+      ancestors.add(root)
+      root = tree.parents[root]
+    }
+    rootsWithChildren.add(root)
+  }
+  for (const root of rootsWithChildren) {
+    if (root !== activeRoot) tree.folded[root] = true
+  }
+  return tree
 }
 
 export function isSafeSnapshotUrl(value) {

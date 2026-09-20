@@ -4,8 +4,10 @@ import {
   SNAPSHOT_STORAGE_KEY,
   normalizeTree,
   planMove,
+  planMoveMany,
   removeBranchFromTree,
   removeFromTree,
+  foldOtherTrees,
   createSnapshot,
   validateSnapshot,
   isSafeSnapshotUrl,
@@ -65,6 +67,16 @@ describe('Chromium tree model', () => {
     expect(() => planMove(tabs, {}, 1, 4, 'inside')).toThrow('Pinned')
   })
 
+  test('moves multiple selected branches under one target in tab order', () => {
+    const tabs = [1, 2, 3, 4, 5, 6].map((id, index) => tab(id, index))
+    const result = planMoveMany(tabs, { parents: { 2: 1, 4: 3 } }, [3, 1, 2], 5)
+    expect(result.movingIds).toEqual([1, 2, 3, 4])
+    expect(result.rootIds).toEqual([1, 3])
+    expect(result.order).toEqual([5, 1, 2, 3, 4, 6])
+    expect(result.parents).toEqual({ 1: 5, 2: 5, 3: 5, 4: 3 })
+    expect(() => planMoveMany(tabs, { parents: { 2: 1 } }, [1, 3], 2)).toThrow('own branch')
+  })
+
   test('reparents direct children when their parent closes', () => {
     expect(removeFromTree({ parents: { 2: 1, 3: 2, 4: 3 }, folded: { 2: true } }, 2)).toEqual({
       parents: { 3: 1, 4: 3 },
@@ -79,6 +91,32 @@ describe('Chromium tree model', () => {
         [2, 3, 4]
       )
     ).toEqual({ parents: { 5: 1 }, folded: { 5: true } })
+  })
+
+  test('folds root trees except for the tree containing the active tab', () => {
+    const tabs = [
+      tab(1, 0),
+      tab(2, 1),
+      tab(3, 2),
+      tab(4, 3, { active: true }),
+      tab(5, 4),
+      tab(6, 5),
+      tab(7, 0, { windowId: 2, active: true }),
+      tab(8, 1, { windowId: 2 }),
+    ]
+    expect(
+      foldOtherTrees(
+        tabs,
+        {
+          parents: { 2: 1, 4: 3, 5: 4, 6: 3, 8: 7 },
+          folded: { 4: true, 7: true },
+        },
+        1
+      )
+    ).toEqual({
+      parents: { 2: 1, 4: 3, 5: 4, 6: 3, 8: 7 },
+      folded: { 1: true, 4: true, 7: true },
+    })
   })
 })
 
@@ -220,23 +258,27 @@ function mockChrome(initialTabs: ReturnType<typeof tab>[], metadata = {}) {
         api.tabs.onUpdated.emit(id, properties, structuredClone(tab))
         return structuredClone(tab)
       }),
-      move: vi.fn(async (id: number, properties: any) => {
-        const from = tabs.findIndex(tab => tab.id === id)
-        const [moving] = tabs.splice(from, 1)
-        const oldWindowId = moving.windowId
-        if (properties.windowId !== undefined && properties.windowId !== moving.windowId) {
-          moving.windowId = properties.windowId
-          moving.groupId = -1
-          api.tabs.onDetached.emit(id, { oldWindowId })
-          api.tabs.onAttached.emit(id, { newWindowId: moving.windowId })
+      move: vi.fn(async (ids: number | number[], properties: any) => {
+        const requested = Array.isArray(ids) ? ids : [ids]
+        const movingTabs = requested.map(id => tabs.find(tab => tab.id === id))
+        tabs = tabs.filter(tab => !requested.includes(tab.id))
+        for (const moving of movingTabs) {
+          const oldWindowId = moving.windowId
+          if (properties.windowId !== undefined && properties.windowId !== moving.windowId) {
+            moving.windowId = properties.windowId
+            moving.groupId = -1
+            api.tabs.onDetached.emit(moving.id, { oldWindowId })
+            api.tabs.onAttached.emit(moving.id, { newWindowId: moving.windowId })
+          }
         }
-        const windowTabs = tabs.filter(tab => tab.windowId === moving.windowId)
+        const windowTabs = tabs.filter(tab => tab.windowId === movingTabs[0].windowId)
         const target = properties.index < 0 ? undefined : windowTabs[properties.index]
-        if (target) tabs.splice(tabs.indexOf(target), 0, moving)
-        else tabs.push(moving)
+        if (target) tabs.splice(tabs.indexOf(target), 0, ...movingTabs)
+        else tabs.push(...movingTabs)
         reindex()
-        api.tabs.onMoved.emit(id, { windowId: moving.windowId })
-        return structuredClone(moving)
+        for (const moving of movingTabs)
+          api.tabs.onMoved.emit(moving.id, { windowId: moving.windowId })
+        return structuredClone(Array.isArray(ids) ? movingTabs : movingTabs[0])
       }),
       remove: vi.fn(async (ids: number | number[]) => {
         for (const id of Array.isArray(ids) ? ids : [ids]) {
@@ -365,6 +407,17 @@ describe('MV3 background lifecycle and operations', () => {
     worker.dispose()
   })
 
+  test('folds every other root tree while keeping the active tree visible', async () => {
+    const api = mockChrome([tab(1, 0), tab(2, 1), tab(3, 2), tab(4, 3, { active: true })], {
+      parents: { 2: 1, 4: 3 },
+    })
+    const worker = createBackground(api)
+    await worker.dispatch({ action: 'foldOtherTrees', windowId: 1 })
+    const state = await worker.dispatch({ action: 'getState', windowId: 1 })
+    expect(state.folded).toEqual({ 1: true })
+    worker.dispose()
+  })
+
   test('registers listeners immediately and recovers tree state across worker suspension', async () => {
     const api = mockChrome([tab(1, 0), tab(2, 1)], { parents: { 2: 1 }, folded: {} })
     const worker = createBackground(api)
@@ -396,6 +449,21 @@ describe('MV3 background lifecycle and operations', () => {
     expect(state.tabs.map((tab: any) => tab.id)).toEqual([1, 4, 2, 3])
     expect(state.parents).toEqual({ 2: 4, 3: 2 })
     expect(api.storage.session.data[TREE_STORAGE_KEY].parents).toEqual({ 2: 4, 3: 2 })
+    worker.dispose()
+  })
+
+  test('moves multiple selected branches beneath one target', async () => {
+    const api = mockChrome(
+      [1, 2, 3, 4, 5].map((id, index) => tab(id, index)),
+      { parents: { 2: 1, 4: 3 } }
+    )
+    const worker = createBackground(api)
+    await worker.dispatch({ action: 'moveMany', tabIds: [1, 3], targetId: 5 })
+    await worker.idle()
+    const state = await worker.dispatch({ action: 'getState', windowId: 1 })
+    expect(state.tabs.map((tab: any) => tab.id)).toEqual([5, 1, 2, 3, 4])
+    expect(state.parents).toEqual({ 1: 5, 2: 1, 3: 5, 4: 3 })
+    expect(api.tabs.move).toHaveBeenCalledWith([1, 2, 3, 4], { index: 1 })
     worker.dispose()
   })
 

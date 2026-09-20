@@ -15,7 +15,7 @@ let windowId
 let selected = new Set()
 let anchorId
 let visibleTabs = []
-let dragId
+let dragIds = []
 let refreshTimer
 let refreshVersion = 0
 let editingGroup
@@ -182,11 +182,11 @@ function createTabRow(tab) {
         'fold'
       )
     )
+    if (state.folded[tab.id]) iconBox.append(el('span', 'desc-count', children.size))
   }
   body.append(iconBox)
   if (!tab.pinned) {
     body.append(el('span', 'title', tab.title || '新标签页'))
-    if (children.size && state.folded[tab.id]) body.append(el('span', 'desc-count', children.size))
     if (tab.audible || tab.mutedInfo?.muted)
       body.append(
         button(
@@ -212,17 +212,27 @@ function createTabRow(tab) {
   })
   row.addEventListener('keydown', event => onTabKey(event, tab))
   row.addEventListener('dragstart', event => {
-    dragId = tab.id
+    dragIds =
+      selected.size > 1 && selected.has(tab.id)
+        ? state.tabs.filter(item => selected.has(item.id)).map(item => item.id)
+        : [tab.id]
     event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', String(tab.id))
+    event.dataTransfer.setData('text/plain', dragIds.join(','))
     $('#context-menu').hidden = true
   })
   row.addEventListener('dragover', event => {
-    if (dragId === undefined || dragId === tab.id) return
+    if (!dragIds.length || dragIds.includes(tab.id)) return
     event.preventDefault()
     const rect = row.getBoundingClientRect()
     const fraction = (event.clientY - rect.top) / rect.height
-    row.dataset.drop = fraction < 0.25 ? 'before' : fraction > 0.75 ? 'after' : 'inside'
+    row.dataset.drop =
+      dragIds.length > 1
+        ? 'inside'
+        : fraction < 0.25
+          ? 'before'
+          : fraction > 0.75
+            ? 'after'
+            : 'inside'
   })
   row.addEventListener('dragleave', event => {
     if (!row.contains(event.relatedTarget)) delete row.dataset.drop
@@ -231,11 +241,15 @@ function createTabRow(tab) {
     event.preventDefault()
     const placement = row.dataset.drop
     delete row.dataset.drop
-    if (dragId !== undefined && placement)
-      run(() => mutate('move', { tabId: dragId, targetId: tab.id, placement }))
+    if (dragIds.length && placement)
+      run(() =>
+        dragIds.length > 1
+          ? mutate('moveMany', { tabIds: [...dragIds], targetId: tab.id })
+          : mutate('move', { tabId: dragIds[0], targetId: tab.id, placement })
+      )
   })
   row.addEventListener('dragend', () => {
-    dragId = undefined
+    dragIds = []
     document.querySelectorAll('[data-drop]').forEach(node => delete node.dataset.drop)
   })
   return row
@@ -540,6 +554,7 @@ function applySettings(settings = {}) {
 }
 
 $('#new-tab').addEventListener('click', () => run(() => mutate('create')))
+$('#fold-other-trees').addEventListener('click', () => run(() => mutate('foldOtherTrees')))
 $('#dismiss-error').addEventListener('click', () => {
   $('#error').hidden = true
 })

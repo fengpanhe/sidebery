@@ -5,9 +5,11 @@ import {
   GROUP_COLORS,
   normalizeTree,
   planMove,
+  planMoveMany,
   descendantIds,
   removeBranchFromTree,
   removeFromTree,
+  foldOtherTrees,
   createSnapshot,
   validateSnapshot,
 } from './model.js'
@@ -281,12 +283,30 @@ export function createBackground(api) {
         tree = { parents: plan.parents, folded: plan.folded }
         break
       }
+      case 'moveMany': {
+        const tabs = await api.tabs.query({})
+        const plan = planMoveMany(tabs, tree, message.tabIds, requireId(message.targetId))
+        windowId = plan.windowId
+        const destination = plan.order.indexOf(plan.movingIds[0])
+        await api.tabs.move(plan.movingIds, { index: destination })
+        if (plan.groupId === -1) await api.tabs.ungroup(plan.movingIds)
+        else await api.tabs.group({ tabIds: plan.movingIds, groupId: plan.groupId })
+        await verifyOrder(windowId, plan.order)
+        tree = { parents: plan.parents, folded: plan.folded }
+        break
+      }
       case 'toggleFold': {
         const tab = await getTab(message.tabId)
         windowId = tab.windowId
         if (tab.pinned) throw new Error('Pinned tabs cannot have children')
         if (tree.folded[tab.id]) delete tree.folded[tab.id]
         else tree.folded[tab.id] = true
+        break
+      }
+      case 'foldOtherTrees': {
+        windowId = await normalWindow(windowId)
+        const tabs = await api.tabs.query({})
+        tree = foldOtherTrees(tabs, tree, windowId)
         break
       }
       case 'group': {

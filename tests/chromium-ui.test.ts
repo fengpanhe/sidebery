@@ -58,6 +58,16 @@ async function setup() {
         active: false,
         pinned: false,
       },
+      {
+        id: 4,
+        index: 3,
+        windowId: 1,
+        groupId: -1,
+        title: 'Drop target',
+        url: 'https://target.example.org',
+        active: false,
+        pinned: false,
+      },
     ],
     parents: { 2: 1 },
     folded: { 1: true },
@@ -85,7 +95,7 @@ async function setup() {
     },
   }
   window.eval(script)
-  await vi.waitFor(() => expect(window.document.querySelectorAll('.Tab').length).toBe(2))
+  await vi.waitFor(() => expect(window.document.querySelectorAll('.Tab').length).toBe(3))
   return {
     window,
     document: window.document,
@@ -101,10 +111,13 @@ describe('Chromium sidebar interaction', () => {
     expect(document.querySelector('.title img')).toBeNull()
     expect(document.querySelector('.toolbar')).toBeNull()
     expect(document.querySelector('.search-box')).toBeNull()
+    expect(document.querySelector('.top-actions')).toBeNull()
+    expect(document.querySelector('footer #fold-other-trees')).not.toBeNull()
     expect(document.querySelector('main + footer')).not.toBeNull()
     expect([...document.querySelectorAll('.Tab')].map((node: any) => node.dataset.id)).toEqual([
       '1',
       '3',
+      '4',
     ])
   })
 
@@ -123,6 +136,15 @@ describe('Chromium sidebar interaction', () => {
     expect(send.mock.calls.some(([message]) => message.action === 'activate')).toBe(false)
   })
 
+  test('top action folds every tree except the active tab tree', async () => {
+    const { document, send } = await setup()
+    send.mockClear()
+    document.querySelector('#fold-other-trees').click()
+    await vi.waitFor(() =>
+      expect(send).toHaveBeenCalledWith(expect.objectContaining({ action: 'foldOtherTrees' }))
+    )
+  })
+
   test('overlays a parent fold arrow on its favicon while preserving a larger child indent', async () => {
     const { document } = await setup()
     const parent = document.querySelector('[data-id="1"]')
@@ -130,11 +152,14 @@ describe('Chromium sidebar interaction', () => {
     expect(parent.dataset.parent).toBe('true')
     expect(parent.querySelector('.tab-icon > .fold')).toBe(fold)
     expect(parent.querySelector('.tab-icon > .favicon')).not.toBeNull()
+    expect(parent.querySelector('.tab-icon > .desc-count')?.textContent).toBe('1')
+    expect(parent.querySelector('.body > .desc-count')).toBeNull()
 
     const stylesheet = document.querySelector('link[href="sidebar.css"]')
     expect(stylesheet).not.toBeNull()
     const css = readFileSync(new URL('../chromium/sidebar.css', import.meta.url), 'utf8')
-    expect(css).toContain('--frame-bg: #f1fffe')
+    expect(css).toContain('--frame-bg: #effffd')
+    expect(css).toContain('--active-bg: #a5dcda')
     expect(css).toContain('--row-height: 32px')
     expect(css).toContain('font-size: 15px')
     expect(css).toContain('flex: 0 0 auto')
@@ -163,6 +188,30 @@ describe('Chromium sidebar interaction', () => {
     )
     await vi.waitFor(() =>
       expect(document.querySelector('#group-dialog').hasAttribute('open')).toBe(false)
+    )
+  })
+
+  test('dragging multiple selected tabs onto a target makes them direct children', async () => {
+    const { window, document, send } = await setup()
+    for (const id of [1, 3])
+      document
+        .querySelector(`[data-id="${id}"]`)
+        .dispatchEvent(new window.MouseEvent('click', { bubbles: true, ctrlKey: true }))
+    send.mockClear()
+    const source = document.querySelector('[data-id="1"]')
+    const target = document.querySelector('[data-id="4"]')
+    const dataTransfer = { effectAllowed: '', setData: vi.fn() }
+    const dragStart = new window.Event('dragstart', { bubbles: true, cancelable: true })
+    Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer })
+    source.dispatchEvent(dragStart)
+    target.dispatchEvent(
+      new window.MouseEvent('dragover', { bubbles: true, cancelable: true, clientY: 10 })
+    )
+    target.dispatchEvent(new window.Event('drop', { bubbles: true, cancelable: true }))
+    await vi.waitFor(() =>
+      expect(send).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'moveMany', tabIds: [1, 3], targetId: 4 })
+      )
     )
   })
 
